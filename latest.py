@@ -70,7 +70,10 @@ def search_top(id, dicts):
 
 def print_ascii(newlyAdded, data, date):
 	if len(newlyAdded) == 0:
-		return "No new entries"
+		ret = "Last check: %s\n\n" % date
+		ret = ret + "No new entries"
+
+		return ret
 
 	newTop = data["top"]
 	newlyAddedDicts = [search_top(itemId, newTop) for itemId in newlyAdded]
