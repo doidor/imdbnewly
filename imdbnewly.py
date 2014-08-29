@@ -149,7 +149,7 @@ def create_argument_parser():
 
 	parser.add_argument('-f', '--fetch', action='store_true', required=False, help="fetch imdb's current top 250 list")
 	parser.add_argument('-a', '--ascii', action='store_true', required=False, help="print the newly added items in ascii format")
-	parser.add_argument('-w', '--html', action='store_true', required=False, help="print the newly added items in html format")
+	parser.add_argument('-ht', '--html', action='store_true', required=False, help="print the newly added items in html format")
 	parser.add_argument('-b', '--both', action='store_true', required=False, help="print both the ascii and the html formats")
 
 	return parser
