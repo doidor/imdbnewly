@@ -11,10 +11,137 @@ from imdbpie import Imdb
 from prettytable import *
 from jinja2 import Template
 
-jsonFileName = "top.json"
-asciiFileName = "index.txt"
-htmlFileName = "index.html"
-htmlTemplateName = "top_template.html"
+class ImdbNewly:
+	_imdb = None
+	_newTop = None
+	_oldTop = None
+	_newlyAdded = None
+	_storedTopFile = "top.json"
+
+	def __init__(self):
+		self._imdb = Imdb()
+		self._oldTop = self._get_stored_data()
+		self._oldTopList = self._generate_oldTop_id_list()
+		self._newTop = self._fetch_data()
+		self._newTopList = self._generate_newTop_id_list()
+		self._newlyAdded = self._find_newly_added()
+
+	def _fetch_data(self):
+		today = datetime.datetime.now()
+
+		ret = {
+			"top" : self._imdb.top_250(),
+			"info" : {
+				"date" : today.ctime()
+			}
+		}
+
+		return ret
+
+	def save_top_data(self):
+		top = self._fetch_data()
+
+		f = open(self._storedTopFile, 'w')
+		f.write(json.dumps(top))
+		f.close()
+
+	def _generate_oldTop_id_list(self):
+		return [item["tconst"] for item in self._oldTop["top"]]
+
+	def _generate_newTop_id_list(self):
+		return [item["tconst"] for item in self._newTop["top"]]
+
+	def _get_stored_data(self):
+		if not os.path.isfile(self._storedTopFile):
+			self.save_top_data()
+
+		f = open(self._storedTopFile, 'r')
+		jsonTop = f.read()
+		f.close()
+
+		return json.loads(jsonTop)
+
+	def _search_newTop_data(self, id):
+		return next((item for item in self._newTop["top"] if item["tconst"] == id), None)
+
+	def _find_newly_added(self):
+		return set(self._newTopList) - set(self._oldTopList)
+
+	def get_newly_added(self):
+		return [self._search_newTop_data(itemId) for itemId in self._newlyAdded]
+
+	def get_newTop_date(self):
+		return self._newTop["info"]["date"]
+
+	def get_oldTop_date(self):
+		return self._oldTop["info"]["date"]
+
+class ImdbNewlyExporter:
+	_imdbNewly = None
+	_newlyAddedDicts = None
+	_oldListDate = None
+	_newListDate = None
+
+	_asciiFileName = "index.txt"
+	_htmlFileName = "index.html"
+	_htmlTemplateName = "top_template.html"
+
+	def __init__(self, imdbNewly):
+		self._imdbNewly = imdbNewly
+
+		self._newlyAddedDicts = self._imdbNewly.get_newly_added()
+		self._oldListDate = self._imdbNewly.get_oldTop_date()
+		self._newListDate = self._imdbNewly.get_newTop_date()
+
+	def _parse_html_template(self):
+		f = open(self._htmlTemplateName, 'r')
+		html = f.read()
+		f.close()
+
+		return html
+
+	def _get_ascii(self):
+		if len(self._newlyAddedDicts) == 0:
+			ret = "Top 250 list date: %s\n" % self._oldListDate
+			ret = ret + "Last check date: %s\n\n" % self._newListDate
+			ret = ret + "No new entries"
+
+			return ret
+
+		table = PrettyTable()
+		table.field_names = ["Title", "Rating", "Votes", "URL"]
+		table.align = "l"
+
+		for movie in self._newlyAddedDicts:
+			url = "http://www.imdb.com/title/%s/" % (movie["tconst"])
+			table.add_row([movie["title"], movie["rating"], movie["num_votes"], url])
+
+		ret = "Top 250 list date: %s\n" % self._oldListDate
+		ret = ret + "Last check date: %s\n\n" % self._newListDate
+		ret = ret + table.get_string()
+
+		return ret
+
+	def _get_html(self):
+		htmlTemplate = self._parse_html_template()
+		template = Template(htmlTemplate)
+
+		return template.render(movies=self._newlyAddedDicts, oldListDate=self._oldListDate, newListDate=self._newListDate)
+
+	def _write_to_file(self, fileName, text):
+		f = open(fileName, 'w')
+		f.write(text)
+		f.close()
+
+	def write_export(self, exportType="both"):
+		if exportType == "both":
+			self._write_to_file(self._htmlFileName, self._get_html())
+			self._write_to_file(self._asciiFileName, self._get_ascii())
+		elif exportType == "html":
+			self._write_to_file(self._htmlFileName, self._get_html())
+		elif exportType == "ascii":
+			self._write_to_file(self._asciiFileName, self._get_ascii())
+
 
 def create_argument_parser():
 	parser = argparse.ArgumentParser(
@@ -27,98 +154,10 @@ def create_argument_parser():
 
 	return parser
 
-def fetch_top250():
-	imdb = Imdb()
-
-	top = imdb.top_250()
-
-	return top
-
-def fetch_data():
-	today = datetime.datetime.now()
-
-	ret = {
-		"top" : None,
-		"info" : {
-			"date" : today.ctime()
-		}
-	}
-
-	top = fetch_top250()
-	ret["top"] = top
-
-	return ret
-
-def write_top_to_file(json):
-	f = open(jsonFileName, 'w')
-	f.write(json)
-	f.close()
-
-def get_top250():
-	if not os.path.isfile(jsonFileName):
-		top = fetch_data()
-		write_top_to_file(json.dumps(top))
-
-	f = open(jsonFileName, 'r')
-	jsonTop = f.read()
-	f.close()
-
-	return json.loads(jsonTop)
-
-def search_top(id, dicts):
-	return next((item for item in dicts if item["tconst"] == id), None)
-
-def print_ascii(newlyAdded, data, date):
-	if len(newlyAdded) == 0:
-		ret = "Last check: %s\n\n" % date
-		ret = ret + "No new entries"
-
-		return ret
-
-	newTop = data["top"]
-	newlyAddedDicts = [search_top(itemId, newTop) for itemId in newlyAdded]
-
-	table = PrettyTable()
-	fieldNames = ["Title", "Rating", "Votes", "URL"]
-	table.field_names = fieldNames
-	table.align = "l"
-
-	for movie in newlyAddedDicts:
-		url = "http://www.imdb.com/title/%s/" % (movie["tconst"])
-		table.add_row([movie["title"], movie["rating"], movie["num_votes"], url])
-
-	ret = "Last check: %s\n\n" % date
-	ret = ret + table.get_string(sortby="Rating", reversesort=True)
-
-	return ret
-
-def read_html_template():
-	f = open(htmlTemplateName, 'r')
-	html = f.read()
-	f.close()
-
-	return html
-
-def print_html(newlyAdded, data, date):
-	newTop = data["top"]
-	newlyAddedDicts = [search_top(itemId, newTop) for itemId in newlyAdded]
-
-	htmlTemplate = read_html_template()
-	template = Template(htmlTemplate)
-
-	return template.render(movies=newlyAddedDicts, date=date)
-
-def write_ascii(text):
-	f = open(asciiFileName, 'w')
-	f.write(text)
-	f.close()
-
-def write_html(text):
-	f = open(htmlFileName, 'w')
-	f.write(text)
-	f.close()
-
 if __name__ == "__main__":
+	imdbNewly = ImdbNewly()
+	imdbNewlyExporter = ImdbNewlyExporter(imdbNewly)
+
 	argParser = create_argument_parser()
 	argsList = sys.argv
 
@@ -126,29 +165,21 @@ if __name__ == "__main__":
 
 	args = argParser.parse_args(argsList)
 
-	data = fetch_data()
-	newTop = data["top"]
-
 	if args.fetch:
-		write_top_to_file(json.dumps(data))
-
-	fileData = get_top250()
-	top = fileData["top"]
-
-	newTopList = [item["tconst"] for item in newTop]
-	topList = [item["tconst"] for item in top]
-
-	newlyAdded = set(newTopList) - set(topList)
+		print "Refetching data..."
+		imdbNewly.save_top_data()
 
 	if args.ascii:
-		write_ascii(print_ascii(newlyAdded, data, fileData["info"]["date"]))
+		print "Exporting in ascii mode"
+		imdbNewlyExporter.write_export(exportType="ascii")
 
 	if args.html:
-		write_html(print_html(newlyAdded, data, fileData["info"]["date"]))
+		print "Exporting in html mode"
+		imdbNewlyExporter.write_export(exportType="html")
 
 	if args.both:
-		write_ascii(print_ascii(newlyAdded, data, fileData["info"]["date"]))
-		write_html(print_html(newlyAdded, data, fileData["info"]["date"]))
+		print "Exporting in both ascii and html modes"
+		imdbNewlyExporter.write_export()
 
 	print "Done"
 	sys.exit(0)
