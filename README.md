@@ -30,7 +30,9 @@ I run this as a cronjob, like this:
 
 Requirements
 ---
+
 Paste from requirements.txt
+
 1. Python 2.7+
 1. Jinja2 2.7.3
 1. MarkupSafe 0.23
