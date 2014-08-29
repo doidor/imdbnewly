@@ -20,6 +20,14 @@ optional arguments:
   -b, --both   print both the ascii and the html formats
 ```
 
+I run this as a cronjob, like this:
+```
+# re-fetch the top 250 list every 3 months
+1 0 1 */3 * /usr/bin/python imdbnewly.py -f >/dev/null 2>&1
+# generate the newly added movies list every day at 1 am
+1 0 * * * /usr/bin/python imdbnewly.py -b >/dev/null 2>&1
+```
+
 Requirements
 ---
 Paste from requirements.txt
