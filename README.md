@@ -3,6 +3,8 @@ IMDbNewly
 
 IMDbNewly is a simple python script which fetches the movies recently added into IMDb's top 250 list. It then generates 2 static files (html and txt) with the fetched data.
 
+You can find an online version [here](http://imdbnewly.doidor.com/).
+
 Usage
 ---
 
