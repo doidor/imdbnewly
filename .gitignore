@@ -1,0 +1,10 @@
+*.pyo
+*.pyc
+env/
+*~
+._.*
+.DS*
+.smb*
+index.html
+index.txt
+top.json
