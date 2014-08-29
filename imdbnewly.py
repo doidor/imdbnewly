@@ -155,15 +155,15 @@ def create_argument_parser():
 	return parser
 
 if __name__ == "__main__":
-	imdbNewly = ImdbNewly()
-	imdbNewlyExporter = ImdbNewlyExporter(imdbNewly)
-
 	argParser = create_argument_parser()
 	argsList = sys.argv
 
 	del argsList[0]
 
 	args = argParser.parse_args(argsList)
+
+	imdbNewly = ImdbNewly()
+	imdbNewlyExporter = ImdbNewlyExporter(imdbNewly)
 
 	if args.fetch:
 		print "Refetching data..."
